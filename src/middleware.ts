@@ -33,15 +33,8 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = pathname === '/' || pathname.startsWith('/how-it-works')
   const isAppRoute = !isAuthRoute && !isPublicRoute && !pathname.startsWith('/_next') && !pathname.startsWith('/api')
 
-  // Redirect authenticated users from root to predictions
-  if (user && pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/predictions'
-    return NextResponse.redirect(url)
-  }
-
-  // Redirect unauthenticated users from root to how-it-works
-  if (!user && pathname === '/') {
+  // Redirect root to how-it-works for everyone
+  if (pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/how-it-works'
     return NextResponse.redirect(url)
@@ -55,7 +48,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/predictions'
+    url.pathname = '/how-it-works'
     return NextResponse.redirect(url)
   }
 
