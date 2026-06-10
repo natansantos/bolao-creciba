@@ -1,0 +1,81 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import MatchCard from '@/components/match-card'
+import type { Match, Prediction, Round } from '@/lib/types'
+
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: openRounds } = await supabase
+    .from('rounds')
+    .select('*')
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
+
+  const roundIds = (openRounds ?? []).map((r: Round) => r.id)
+
+  let matches: Match[] = []
+  let predictions: Prediction[] = []
+
+  if (roundIds.length > 0) {
+    const { data: matchData } = await supabase
+      .from('matches')
+      .select('*')
+      .in('round_id', roundIds)
+      .order('match_time', { ascending: true })
+
+    matches = matchData ?? []
+
+    if (matches.length > 0) {
+      const { data: predData } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('match_id', matches.map((m) => m.id))
+
+      predictions = predData ?? []
+    }
+  }
+
+  const predictionsByMatch = new Map(predictions.map((p) => [p.match_id, p]))
+  const roundsMap = new Map((openRounds ?? []).map((r: Round) => [r.id, r]))
+
+  if (matches.length === 0) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+        <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>Seus palpites</p>
+        <div
+          className="rounded-2xl p-8 text-center border"
+          style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}
+        >
+          <p className="text-4xl mb-3">⚽</p>
+          <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Nenhuma rodada aberta</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Aguarde o admin abrir uma rodada para palpitar.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 max-w-2xl mx-auto">
+      <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+      <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Faça seus palpites antes do deadline</p>
+
+      <div className="space-y-4">
+        {matches.map((match) => (
+          <MatchCard
+            key={match.id}
+            match={match}
+            prediction={predictionsByMatch.get(match.id) ?? null}
+            round={roundsMap.get(match.round_id)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
