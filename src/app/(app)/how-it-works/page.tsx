@@ -1,25 +1,6 @@
-import Link from 'next/link'
-
 export default function HowItWorksPage() {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-base)' }}>
-      {/* Header */}
-      <div className="border-b" style={{ borderColor: 'var(--bg-border)' }}>
-        <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8 flex items-center justify-between">
-          <h1 className="font-bebas text-4xl lg:text-5xl" style={{ color: 'var(--accent-green)' }}>
-            PALPITEIROS
-          </h1>
-          <Link
-            href="/"
-            className="text-sm lg:text-base px-4 py-2 rounded-lg"
-            style={{ backgroundColor: 'var(--accent-green)', color: '#0D0F0E' }}
-          >
-            Voltar
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 lg:px-6 py-12 lg:py-16">
+    <div className="p-4 lg:p-6 max-w-6xl mx-auto">
         {/* Introdução */}
         <section className="mb-16">
           <h2 className="font-bebas text-3xl lg:text-4xl mb-4" style={{ color: 'var(--text-primary)' }}>
@@ -241,28 +222,6 @@ export default function HowItWorksPage() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="text-center">
-          <h3 className="font-bebas text-2xl lg:text-3xl mb-6" style={{ color: 'var(--text-primary)' }}>
-            Pronto para começar?
-          </h3>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/register"
-              className="px-8 py-3 rounded-lg font-semibold text-sm lg:text-base"
-              style={{ backgroundColor: 'var(--accent-green)', color: '#0D0F0E' }}
-            >
-              Criar Conta
-            </Link>
-            <Link
-              href="/login"
-              className="px-8 py-3 rounded-lg font-semibold text-sm lg:text-base border"
-              style={{ borderColor: 'var(--accent-green)', color: 'var(--accent-green)' }}
-            >
-              Entrar
-            </Link>
-          </div>
-        </section>
       </div>
     </div>
   )
