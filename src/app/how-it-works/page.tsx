@@ -164,7 +164,7 @@ export default function HowItWorksPage() {
               <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-base)' }}>
                 <div className="text-2xl mb-2">📈</div>
                 <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Consistente</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Taxa > 80%</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Taxa {`>`} 80%</p>
               </div>
               <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-base)' }}>
                 <div className="text-2xl mb-2">🍀</div>
