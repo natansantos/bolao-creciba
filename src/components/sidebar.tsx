@@ -6,7 +6,7 @@ import { logoutAction } from '@/lib/actions/auth'
 import type { Profile } from '@/lib/types'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: '⚽' },
+  { href: '/predictions', label: 'Palpites', icon: '⚽' },
   { href: '/ranking', label: 'Ranking', icon: '🏆' },
   { href: '/history', label: 'Histórico', icon: '📋' },
 ]

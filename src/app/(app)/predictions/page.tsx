@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import MatchCard from '@/components/match-card'
 import type { Match, Prediction, Round } from '@/lib/types'
 
-export default async function DashboardPage() {
+export default async function PredictionsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -45,8 +45,8 @@ export default async function DashboardPage() {
   if (matches.length === 0) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
-        <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
-        <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>Seus palpites</p>
+        <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Palpites</h1>
+        <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>Faça seus palpites para os próximos jogos</p>
         <div
           className="rounded-2xl p-8 text-center border"
           style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+      <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Palpites</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Faça seus palpites antes do deadline</p>
 
       <div className="space-y-4">
