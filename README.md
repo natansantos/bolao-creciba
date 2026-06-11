@@ -102,9 +102,13 @@ src/
 - Salvamento em tempo real
 
 ### Pontuação
-- 10 pontos: Placar exato
-- 5 pontos: Resultado correto
-- 0 pontos: Erro
+- 🟢 **10 pontos**: Placar exato
+- 🟡 **7 pontos**: Resultado + acertou gols de 1 time
+- 🟡 **5 pontos**: Resultado correto (apenas vencedor)
+- 🟠 **2 pontos**: Acertou gols de 1 time mas errou resultado
+- 🔴 **0 pontos**: Errou tudo
+
+**Bônus Mata-mata:** +3 pontos se acertar vencedor nos pênaltis
 
 ### Badges
 - 🎯 Perfeito: Placar exato
