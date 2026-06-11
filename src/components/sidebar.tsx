@@ -31,7 +31,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
         <h1 className="font-bebas text-3xl" style={{ color: 'var(--accent-green)' }}>
           PALPITEIROS
         </h1>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Copa do Mundo 2026</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Bolão CRECI-BA</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

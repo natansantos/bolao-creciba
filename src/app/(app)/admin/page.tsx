@@ -23,7 +23,7 @@ export default async function AdminPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Painel Admin</h1>
-      <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Copa do Mundo 2026</p>
+      <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Bolão CRECI-BA</p>
 
       <div className="grid grid-cols-2 gap-3">
         {cards.map((card) => (

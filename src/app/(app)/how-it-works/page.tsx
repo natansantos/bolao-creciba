@@ -11,9 +11,9 @@ export default function HowItWorksPage() {
           Palpites
         </h2>
         <div className="space-y-3 text-sm lg:text-base" style={{ color: 'var(--text-primary)' }}>
-          <p><strong>O que eh um palpite?</strong> Voce tenta adivinhar o resultado de um jogo antes dele acontecer.</p>
+          <p><strong>O que é um palpite?</strong> Voce tenta adivinhar o resultado de um jogo antes dele acontecer.</p>
           <p><strong>Como fazer:</strong> No menu Palpites, escolha o placar (ex: 2 x 1). Se for eliminatoria com empate, escolha o vencedor nos penaltis.</p>
-          <p><strong>Prazo:</strong> Voce tem ate 1 hora antes do jogo comear para fazer seu palpite.</p>
+          <p><strong>Prazo:</strong> Voce tem ate 30 minutos antes do jogo comear para fazer seu palpite.</p>
         </div>
       </section>
 

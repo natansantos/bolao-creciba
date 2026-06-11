@@ -131,7 +131,12 @@ export default function MatchCard({ match, prediction, round }: Props) {
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {round?.name ?? ''} · {matchDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })} {matchDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
         </span>
-        <CountdownTimer matchTime={match.match_time} />
+        <div className="flex items-center gap-1.5">
+          {!deadlinePassed && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Palpite fecha em</span>
+          )}
+          <CountdownTimer matchTime={match.match_time} />
+        </div>
       </div>
 
       <div className="p-4">

@@ -9,7 +9,7 @@ export default function RegisterPage() {
           <h1 className="font-bebas text-5xl mb-1" style={{ color: 'var(--accent-green)' }}>
             PALPITEIROS
           </h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Copa do Mundo 2026</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Bolão CRECI-BA</p>
         </div>
 
         <Suspense fallback={<div className="text-center" style={{ color: 'var(--text-muted)' }}>Carregando...</div>}>

@@ -41,7 +41,7 @@ export default async function RootPage() {
       <main className="flex-1 flex items-center justify-center px-4">
         <div className="max-w-4xl w-full py-20 text-center">
           <h2 className="font-bebas text-5xl lg:text-6xl mb-6" style={{ color: 'var(--text-primary)' }}>
-            Copa do Mundo 2026
+            Bolão CRECI-BA
           </h2>
           <p className="text-lg lg:text-xl mb-8" style={{ color: 'var(--text-muted)' }}>
             Faça seus palpites, compete com amigos e desbloqueie badges especiais

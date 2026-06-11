@@ -32,7 +32,7 @@ export async function registerAction(_prevState: { error: string }, formData: Fo
   })
 
   if (signupError || !authData.user) {
-    return { error: 'Erro ao criar conta. Tente novamente.' }
+    return { error: signupError?.message ?? 'Usuário não retornado pelo Supabase.' }
   }
 
   await admin.from('profiles').insert({
