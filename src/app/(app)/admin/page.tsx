@@ -40,7 +40,7 @@ export default async function AdminPage() {
             <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{card.label}</p>
             {card.count !== null && (
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                {card.count} {card.badge ?? 'registrados'}
+                {card.count} registrados
               </p>
             )}
           </Link>
