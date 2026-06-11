@@ -97,7 +97,7 @@ export async function saveResultAction(formData: FormData) {
   await computePoints(matchId, homeScore, awayScore, wentToPenalties, penaltyWinner)
 
   revalidatePath('/admin/results')
-  revalidatePath('/dashboard')
+  revalidatePath('/predictions')
   revalidatePath('/ranking')
   revalidatePath('/history')
 }
@@ -180,7 +180,7 @@ export async function syncFromApiAction(formData: FormData) {
   await computePoints(matchId, homeScore, awayScore, wentToPenalties, penaltyWinner as 'home' | 'away' | null)
 
   revalidatePath('/admin/results')
-  revalidatePath('/dashboard')
+  revalidatePath('/predictions')
   revalidatePath('/ranking')
   revalidatePath('/history')
 }
@@ -245,7 +245,7 @@ export async function syncAllPendingFromApiAction() {
     }
 
     revalidatePath('/admin/results')
-    revalidatePath('/dashboard')
+    revalidatePath('/predictions')
     revalidatePath('/ranking')
     revalidatePath('/history')
 

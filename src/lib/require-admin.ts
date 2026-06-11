@@ -14,7 +14,7 @@ export async function requireAdmin() {
     .eq('id', user.id)
     .single()
 
-  if (!profile?.is_admin) redirect('/dashboard')
+  if (!profile?.is_admin) redirect('/how-it-works')
 
   return user
 }

@@ -46,6 +46,6 @@ export async function savePredictionAction(formData: FormData) {
 
   if (error) return { error: 'Erro ao salvar palpite' }
 
-  revalidatePath('/dashboard')
+  revalidatePath('/predictions')
   return { error: null }
 }

@@ -15,7 +15,7 @@ export async function loginAction(_prevState: { error: string }, formData: FormD
     return { error: 'Email ou senha incorretos.' }
   }
 
-  redirect('/dashboard')
+  redirect('/how-it-works')
 }
 
 export async function registerAction(_prevState: { error: string }, formData: FormData) {
@@ -44,7 +44,7 @@ export async function registerAction(_prevState: { error: string }, formData: Fo
   const supabase = await createClient()
   await supabase.auth.signInWithPassword({ email, password })
 
-  redirect('/dashboard')
+  redirect('/how-it-works')
 }
 
 export async function logoutAction() {
