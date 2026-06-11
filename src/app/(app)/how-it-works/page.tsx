@@ -22,22 +22,36 @@ export default function HowItWorksPage() {
         <h2 className="font-bebas text-2xl mb-4" style={{ color: 'var(--accent-yellow)' }}>
           Pontuacao
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-base)' }}>
             <div className="font-bebas text-2xl mb-2" style={{ color: 'var(--accent-green)' }}>10 pts</div>
             <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Placar Exato</p>
             <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Acertou o placar perfeito</p>
           </div>
           <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-base)' }}>
+            <div className="font-bebas text-2xl mb-2" style={{ color: 'var(--accent-yellow)' }}>7 pts</div>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Resultado + Gol</p>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Acertou vencedor e 1 time</p>
+          </div>
+          <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-base)' }}>
             <div className="font-bebas text-2xl mb-2" style={{ color: 'var(--accent-yellow)' }}>5 pts</div>
             <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Resultado Correto</p>
-            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Acertou quem venceu</p>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Acertou apenas quem venceu</p>
+          </div>
+          <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-base)' }}>
+            <div className="font-bebas text-2xl mb-2" style={{ color: '#ffb700' }}>2 pts</div>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Gol Correto</p>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Acertou gol mas errou resultado</p>
           </div>
           <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--bg-base)' }}>
             <div className="font-bebas text-2xl mb-2" style={{ color: '#ff6464' }}>0 pts</div>
             <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Errou</p>
             <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Nao acertou o resultado</p>
           </div>
+        </div>
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--bg-border)' }}>
+          <p className="text-sm font-semibold mb-3" style={{ color: 'var(--accent-green)' }}>Bônus em Mata-mata</p>
+          <p className="text-xs" style={{ color: 'var(--text-primary)' }}>Se o jogo for para pênaltis e voce acertar o vencedor nos pênaltis: <strong>+3 pts bônus</strong></p>
         </div>
       </section>
 
