@@ -5,7 +5,7 @@ import { forgotPasswordAction } from '@/lib/actions/auth'
 import Link from 'next/link'
 
 export default function ForgotPasswordPage() {
-  const [state, action, pending] = useActionState(forgotPasswordAction, { error: undefined, success: false })
+  const [state, action, pending] = useActionState(forgotPasswordAction, { error: '', success: false })
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--bg-base)' }}>

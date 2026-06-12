@@ -5,7 +5,7 @@ import { resetPasswordAction } from '@/lib/actions/auth'
 import Link from 'next/link'
 
 export default function ResetPasswordPage() {
-  const [state, action, pending] = useActionState(resetPasswordAction, { error: undefined, success: false })
+  const [state, action, pending] = useActionState(resetPasswordAction, { error: '', success: false })
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--bg-base)' }}>
