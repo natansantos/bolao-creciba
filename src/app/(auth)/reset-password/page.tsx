@@ -1,11 +1,11 @@
 'use client'
 
 import { useActionState } from 'react'
-import { loginAction } from '@/lib/actions/auth'
+import { resetPasswordAction } from '@/lib/actions/auth'
 import Link from 'next/link'
 
-export default function LoginPage() {
-  const [state, action, pending] = useActionState(loginAction, { error: '' })
+export default function ResetPasswordPage() {
+  const [state, action, pending] = useActionState(resetPasswordAction, { error: undefined, success: false })
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--bg-base)' }}>
@@ -18,16 +18,16 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-2xl p-6 border" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}>
-          <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Entrar</h2>
+          <h2 className="text-xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Redefinir Senha</h2>
 
           <form action={action} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                Email
+                Nova Senha
               </label>
               <input
-                type="email"
-                name="email"
+                type="password"
+                name="password"
                 required
                 className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 transition-all"
                 style={{
@@ -35,22 +35,17 @@ export default function LoginPage() {
                   border: '1px solid var(--bg-border)',
                   color: 'var(--text-primary)',
                 }}
-                placeholder="seu@email.com"
+                placeholder="••••••••"
               />
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-                  Senha
-                </label>
-                <Link href="/forgot-password" className="text-xs" style={{ color: 'var(--accent-green)' }}>
-                  Esqueceu?
-                </Link>
-              </div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                Confirmar Senha
+              </label>
               <input
                 type="password"
-                name="password"
+                name="confirmPassword"
                 required
                 className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 transition-all"
                 style={{
@@ -72,13 +67,13 @@ export default function LoginPage() {
               className="w-full rounded-lg py-3 font-semibold text-sm transition-opacity disabled:opacity-60"
               style={{ backgroundColor: 'var(--accent-green)', color: '#0D0F0E' }}
             >
-              {pending ? 'Entrando...' : 'Entrar'}
+              {pending ? 'Atualizando...' : 'Atualizar Senha'}
             </button>
           </form>
         </div>
 
         <p className="text-center text-sm mt-4">
-          Não tem conta? <Link href="/register" style={{ color: 'var(--accent-green)' }}>Cadastre-se</Link>
+          <Link href="/login" style={{ color: 'var(--accent-green)' }}>Voltar ao login</Link>
         </p>
       </div>
     </div>

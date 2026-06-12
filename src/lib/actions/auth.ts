@@ -52,3 +52,40 @@ export async function logoutAction() {
   await supabase.auth.signOut()
   redirect('/login')
 }
+
+export async function forgotPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
+  const email = formData.get('email') as string
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
+  })
+
+  if (error) {
+    return { error: 'Erro ao enviar email de recuperação. Tente novamente.', success: false }
+  }
+
+  return { success: true, error: undefined }
+}
+
+export async function resetPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
+  const password = formData.get('password') as string
+  const confirmPassword = formData.get('confirmPassword') as string
+
+  if (password !== confirmPassword) {
+    return { error: 'As senhas não conferem.', success: false }
+  }
+
+  if (password.length < 6) {
+    return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) {
+    return { error: 'Erro ao atualizar senha. Tente novamente ou solicite um novo link.', success: false }
+  }
+
+  redirect('/login')
+}
