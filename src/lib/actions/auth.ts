@@ -76,38 +76,35 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
     // Save token to database (without validating user)
     console.log('Saving token to database...')
     const admin = createAdminClient()
-    console.log('Insert data:', { user_id: crypto.randomUUID(), token, expires_at: expiresAt.toISOString() })
-    const { error: tokenError, data: tokenData } = await admin
+    console.log('Inserting token...')
+    const { error: tokenError } = await admin
       .from('password_reset_tokens')
       .insert({
         user_id: crypto.randomUUID(),
         token,
         expires_at: expiresAt.toISOString(),
       })
-      .select()
 
-    console.log('Token insert response:', { error: tokenError, data: tokenData })
-    if (tokenError) {
-      console.error('Token error full:', tokenError)
-    }
+    console.log('Token insert error:', tokenError)
 
-    if (!tokenError) {
-      // Send email with reset link
-      console.log('Sending email...')
-      const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
-        },
-      })
+    // Send email with reset link (always try, even if there's a vague error)
+    console.log('Sending email...')
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    })
 
-      const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
-      console.log('Transporter created, sending to:', email)
+    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
+    console.log('Transporter created, sending to:', email)
+    console.log('Reset link:', resetLink)
 
+    try {
       await transporter.sendMail({
         from: `${fromName} <${process.env.SMTP_USER}>`,
         to: email,
@@ -121,6 +118,8 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
         `,
       })
       console.log('Email sent successfully to:', email)
+    } catch (emailErr) {
+      console.error('Email send error:', emailErr)
     }
 
     return { success: true, error: '' }
