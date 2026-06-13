@@ -66,55 +66,22 @@ export async function logoutAction() {
 export async function forgotPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   try {
     const email = formData.get('email') as string
-    console.log('=== forgotPasswordAction start ===')
-    console.log('Email:', email)
 
-    // Generate reset token
-    const token = crypto.randomUUID()
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
-
-    // Save token to database (without validating user)
-    console.log('Saving token to database...')
-    const admin = createAdminClient()
-    // Send email with reset link
-    console.log('Sending email...')
-    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
+    const supabase = await createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
     })
 
-    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
-    console.log('Transporter created, sending to:', email)
-    console.log('Reset link:', resetLink)
-
-    try {
-      await transporter.sendMail({
-        from: `${fromName} <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'Redefinir Senha - Palpiteiros',
-        html: `
-          <p>Olá,</p>
-          <p>Clique no link abaixo para redefinir sua senha:</p>
-          <a href="${resetLink}">Redefinir Senha</a>
-          <p>Este link expira em 1 hora.</p>
-          <p>Se você não solicitou isso, ignore este email.</p>
-        `,
-      })
-      console.log('Email sent successfully to:', email)
-    } catch (emailErr) {
-      console.error('Email send error:', emailErr)
+    if (error) {
+      console.error('Supabase resetPasswordForEmail error:', error)
+      if (error.code === 'over_email_send_rate_limit') {
+        return { error: 'Muitas tentativas. Aguarde alguns minutos.', success: false }
+      }
     }
 
     return { success: true, error: '' }
   } catch (err) {
     console.error('forgotPasswordAction error:', err)
-    // Return success anyway to not reveal if email exists
     return { success: true, error: '' }
   }
 }
@@ -136,13 +103,16 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  // Token is valid if it exists and is not empty
-  if (!token || token.length < 10) {
-    return { error: 'Link inválido. Solicite um novo link.', success: false }
+  const supabase = await createClient()
+
+  // Check if user is authenticated (Supabase should have created session from recovery token)
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Sessão expirada. Solicite um novo link.', success: false }
   }
 
   // Update authenticated user's password
-  const supabase = await createClient()
   const { error: updateError } = await supabase.auth.updateUser({ password })
 
   if (updateError) {
