@@ -73,35 +73,50 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
 
-    // Send email with reset link
-    console.log('Sending email...')
-    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    })
+    // Save token to database (without validating user)
+    console.log('Saving token to database...')
+    const admin = createAdminClient()
+    const { error: tokenError } = await admin
+      .from('password_reset_tokens')
+      .insert({
+        user_id: crypto.randomUUID(), // Temporary ID, will be validated on reset
+        token,
+        email,
+        expires_at: expiresAt.toISOString(),
+      })
+    console.log('Token save error:', tokenError)
 
-    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
-    console.log('Transporter created, sending to:', email)
+    if (!tokenError) {
+      // Send email with reset link
+      console.log('Sending email...')
+      const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      })
 
-    await transporter.sendMail({
-      from: `${fromName} <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: 'Redefinir Senha - Palpiteiros',
-      html: `
-        <p>Olá,</p>
-        <p>Clique no link abaixo para redefinir sua senha:</p>
-        <a href="${resetLink}">Redefinir Senha</a>
-        <p>Este link expira em 1 hora.</p>
-        <p>Se você não solicitou isso, ignore este email.</p>
-      `,
-    })
-    console.log('Email sent successfully')
+      const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
+      console.log('Transporter created, sending to:', email)
+
+      await transporter.sendMail({
+        from: `${fromName} <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: 'Redefinir Senha - Palpiteiros',
+        html: `
+          <p>Olá,</p>
+          <p>Clique no link abaixo para redefinir sua senha:</p>
+          <a href="${resetLink}">Redefinir Senha</a>
+          <p>Este link expira em 1 hora.</p>
+          <p>Se você não solicitou isso, ignore este email.</p>
+        `,
+      })
+      console.log('Email sent successfully to:', email)
+    }
 
     return { success: true, error: '' }
   } catch (err) {
