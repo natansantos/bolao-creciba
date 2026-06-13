@@ -8,7 +8,7 @@ import Link from 'next/link'
 export function ResetPasswordForm() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const [state, action, pending] = useActionState(resetPasswordAction, { error: undefined, success: false })
+  const [state, action, pending] = useActionState(resetPasswordAction, { error: '', success: false })
 
   if (!token) {
     return (

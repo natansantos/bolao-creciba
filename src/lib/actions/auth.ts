@@ -63,7 +63,7 @@ export async function logoutAction() {
   redirect('/login')
 }
 
-export async function forgotPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
+export async function forgotPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   try {
     const email = formData.get('email') as string
     console.log('=== forgotPasswordAction start ===')
@@ -90,7 +90,7 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
 
     if (!user) {
       // Still show success message for security (don't reveal if email exists)
-      return { success: true, error: undefined }
+      return { success: true, error: '' }
     }
 
     if (user) {
@@ -140,15 +140,15 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
       console.log('User not found, skipping email')
     }
 
-    return { success: true, error: undefined }
+    return { success: true, error: '' }
   } catch (err) {
     console.error('forgotPasswordAction error:', err)
     // Return success anyway to not reveal if email exists
-    return { success: true, error: undefined }
+    return { success: true, error: '' }
   }
 }
 
-export async function resetPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
+export async function resetPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
   const token = formData.get('token') as string
