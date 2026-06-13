@@ -73,72 +73,35 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
 
-    // Store token - we'll validate the email when user tries to use it
-    const admin = createAdminClient()
-    console.log('Admin client created')
+    // Send email with reset link
+    console.log('Sending email...')
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    })
 
-    // First, check if user exists
-    console.log('Listing users...')
-    const listResult = await admin.auth.admin.listUsers()
-    console.log('List result keys:', Object.keys(listResult))
-    const { data: { users } = { users: [] }, error: listError } = listResult
-    console.log('List error:', listError)
-    console.log('Users count:', users?.length)
+    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
+    console.log('Transporter created, sending to:', email)
 
-    const user = users?.find(u => u.email === email)
-    console.log('Found user:', !!user)
-
-    if (!user) {
-      // Still show success message for security (don't reveal if email exists)
-      return { success: true, error: '' }
-    }
-
-    if (user) {
-      // Save token to database
-      console.log('Saving token...')
-      const { error: tokenError } = await admin
-        .from('password_reset_tokens')
-        .insert({
-          user_id: user.id,
-          token,
-          expires_at: expiresAt.toISOString(),
-        })
-
-      console.log('Token save error:', tokenError)
-
-      if (!tokenError) {
-        // Send email with reset link
-        console.log('Sending email...')
-        const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
-        const transporter = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASSWORD,
-          },
-        })
-
-        const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
-        console.log('Sending mail to:', email)
-        await transporter.sendMail({
-          from: `${fromName} <${process.env.SMTP_USER}>`,
-          to: email,
-          subject: 'Redefinir Senha - Palpiteiros',
-          html: `
-            <p>Olá,</p>
-            <p>Clique no link abaixo para redefinir sua senha:</p>
-            <a href="${resetLink}">Redefinir Senha</a>
-            <p>Este link expira em 1 hora.</p>
-            <p>Se você não solicitou isso, ignore este email.</p>
-          `,
-        })
-        console.log('Email sent successfully')
-      }
-    } else {
-      console.log('User not found, skipping email')
-    }
+    await transporter.sendMail({
+      from: `${fromName} <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Redefinir Senha - Palpiteiros',
+      html: `
+        <p>Olá,</p>
+        <p>Clique no link abaixo para redefinir sua senha:</p>
+        <a href="${resetLink}">Redefinir Senha</a>
+        <p>Este link expira em 1 hora.</p>
+        <p>Se você não solicitou isso, ignore este email.</p>
+      `,
+    })
+    console.log('Email sent successfully')
 
     return { success: true, error: '' }
   } catch (err) {
