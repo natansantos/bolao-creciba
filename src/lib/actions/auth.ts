@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import * as jwt from 'jsonwebtoken'
 
 export async function loginAction(_prevState: { error: string }, formData: FormData) {
   const email = formData.get('email') as string
@@ -66,19 +67,29 @@ export async function forgotPasswordAction(_prevState: { error: string }, formDa
   const email = formData.get('email') as string
 
   try {
+    // Verify user exists using admin SDK
     const admin = createAdminClient()
-    const { data, error } = await admin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
-      },
-    })
+    const { data: users, error: listError } = await admin.auth.admin.listUsers()
 
-    if (error || !data?.properties?.action_link) {
-      console.error('Generate link error:', error)
+    if (listError || !users?.users) {
+      console.error('List users error:', listError)
       return { error: 'Erro ao enviar email. Tente novamente.' }
     }
+
+    const userExists = users.users.some(u => u.email === email)
+    if (!userExists) {
+      // Don't reveal if user exists for security
+      return { error: '', success: true }
+    }
+
+    // Generate JWT token valid for 1 hour
+    const token = jwt.sign(
+      { email, type: 'password_recovery' },
+      process.env.SUPABASE_SERVICE_ROLE_KEY || 'secret',
+      { expiresIn: '1h' }
+    )
+
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
 
     const nodemailer = require('nodemailer')
     const transporter = nodemailer.createTransport({
@@ -96,7 +107,7 @@ export async function forgotPasswordAction(_prevState: { error: string }, formDa
       html: `
         <h2>Recuperar Senha</h2>
         <p>Clique no link abaixo para redefinir sua senha:</p>
-        <a href="${data.properties?.action_link}">Redefinir Senha</a>
+        <a href="${resetLink}">Redefinir Senha</a>
         <p>O link expira em 1 hora.</p>
       `,
     }
@@ -112,6 +123,12 @@ export async function forgotPasswordAction(_prevState: { error: string }, formDa
 export async function resetPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
+  const token = formData.get('token') as string
+  const email = formData.get('email') as string
+
+  if (!token || !email) {
+    return { error: 'Link inválido ou expirado.', success: false }
+  }
 
   if (password !== confirmPassword) {
     return { error: 'As senhas não conferem.', success: false }
@@ -121,10 +138,20 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  const supabase = await createClient()
-
   try {
-    const { error } = await supabase.auth.updateUser({ password })
+    // Verify token
+    jwt.verify(token, process.env.SUPABASE_SERVICE_ROLE_KEY || 'secret')
+    const decoded: any = jwt.decode(token)
+
+    if (decoded?.email !== email) {
+      return { error: 'Link inválido.', success: false }
+    }
+
+    // Update password in Supabase
+    const admin = createAdminClient()
+    const { error } = await admin.auth.admin.updateUserById(decoded?.sub || '', {
+      password,
+    })
 
     if (error) {
       console.error('Update user error:', error)
@@ -136,6 +163,7 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     if (err.digest?.startsWith('NEXT_REDIRECT')) {
       throw err
     }
-    return { error: 'Erro ao redefinir senha.', success: false }
+    console.error('Reset password error:', err)
+    return { error: 'Link expirado. Solicite um novo link.', success: false }
   }
 }

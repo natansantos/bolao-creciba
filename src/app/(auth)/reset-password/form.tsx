@@ -1,13 +1,30 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { resetPasswordAction } from '@/lib/actions/auth'
 
 export function ResetPasswordForm() {
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
+  const email = searchParams.get('email')
   const [state, action, pending] = useActionState(resetPasswordAction, { error: '', success: false })
+
+  if (!token || !email) {
+    return (
+      <div className="text-center">
+        <p className="text-sm text-red-400 mb-4">Link de recuperação inválido ou expirado.</p>
+        <a href="/forgot-password" className="text-sm" style={{ color: 'var(--accent-green)' }}>
+          Solicitar novo link
+        </a>
+      </div>
+    )
+  }
 
   return (
     <form action={action} className="space-y-4">
+      <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="email" value={email} />
       <div>
         <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Nova Senha
