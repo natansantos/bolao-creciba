@@ -67,22 +67,7 @@ export async function forgotPasswordAction(_prevState: { error: string }, formDa
   const email = formData.get('email') as string
 
   try {
-    // Verify user exists using admin SDK
-    const admin = createAdminClient()
-    const { data: users, error: listError } = await admin.auth.admin.listUsers()
-
-    if (listError || !users?.users) {
-      console.error('List users error:', listError)
-      return { error: 'Erro ao enviar email. Tente novamente.' }
-    }
-
-    const userExists = users.users.some(u => u.email === email)
-    if (!userExists) {
-      // Don't reveal if user exists for security
-      return { error: '', success: true }
-    }
-
-    // Generate JWT token valid for 1 hour
+    // Generate JWT token valid for 1 hour (skip existence check to avoid Auth API issues)
     const token = jwt.sign(
       { email, type: 'password_recovery' },
       process.env.SUPABASE_SERVICE_ROLE_KEY || 'secret',
@@ -147,11 +132,16 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
       return { error: 'Link inválido.', success: false }
     }
 
-    // Update password in Supabase
+    // Get user ID by email, then update password
     const admin = createAdminClient()
-    const { error } = await admin.auth.admin.updateUserById(decoded?.sub || '', {
-      password,
-    })
+    const { data: userData, error: getUserError } = await admin.auth.admin.getUserByEmail(email)
+
+    if (getUserError || !userData?.user) {
+      console.error('Get user error:', getUserError)
+      return { error: 'Usuário não encontrado.', success: false }
+    }
+
+    const { error } = await admin.auth.admin.updateUserById(userData.user.id, { password })
 
     if (error) {
       console.error('Update user error:', error)
