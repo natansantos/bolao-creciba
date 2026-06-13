@@ -133,6 +133,10 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
       return { error: 'Link inválido.', success: false }
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    console.log('ENV CHECK - SUPABASE_URL:', supabaseUrl?.substring(0, 40), 'SERVICE_KEY set:', !!serviceKey)
+
     const admin = createAdminClient()
 
     // Look up user ID via profiles table (PostgREST works, Auth API does not)
@@ -143,7 +147,7 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
       .single()
 
     if (profileError || !profile?.id) {
-      console.error('Profile lookup error:', JSON.stringify(profileError), 'email:', email)
+      console.error('Profile lookup error:', JSON.stringify(profileError)?.substring(0, 200), 'email:', email)
       return { error: 'Usuário não encontrado.', success: false }
     }
 
