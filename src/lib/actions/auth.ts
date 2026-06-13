@@ -122,8 +122,22 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
 
   const supabase = await createClient()
 
-  // Try to sign in with current password (or use empty password for recovery)
-  // Then update the password
+  // Verify the token and create a session
+  console.log('Verifying token for email:', email)
+  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'recovery',
+  })
+
+  console.log('Verify OTP result:', { data: verifyData, error: verifyError })
+
+  if (verifyError || !verifyData.session) {
+    console.error('Error verifying OTP:', verifyError)
+    return { error: 'Token inválido ou expirado. Solicite um novo link.', success: false }
+  }
+
+  // Now update the password with the authenticated session
   const { error: updateError } = await supabase.auth.updateUser({
     password,
   })
