@@ -43,6 +43,7 @@ export async function registerAction(_prevState: { error: string }, formData: Fo
   const { error: profileError } = await admin.from('profiles').insert({
     id: authData.user.id,
     name,
+    email,
     is_admin: false,
   })
 
@@ -134,22 +135,19 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
 
     const admin = createAdminClient()
 
-    // Get user ID by email via SQL function (avoids problematic Auth API endpoints)
-    const { data: userId, error: rpcError } = await admin.rpc('get_user_id_by_email', { user_email: email })
+    // Look up user ID via profiles table (PostgREST works, Auth API does not)
+    const { data: profile, error: profileError } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single()
 
-    console.log('RPC result - email:', email, 'userId:', userId, 'error:', JSON.stringify(rpcError))
-
-    if (rpcError) {
-      console.error('RPC error:', JSON.stringify(rpcError))
-      return { error: 'Erro ao buscar usuário.', success: false }
+    if (profileError || !profile?.id) {
+      console.error('Profile lookup error:', JSON.stringify(profileError), 'email:', email)
+      return { error: 'Usuário não encontrado.', success: false }
     }
 
-    if (!userId) {
-      console.error('User not found for email:', email)
-      return { error: 'Usuário não encontrado para este email.', success: false }
-    }
-
-    const { error } = await admin.auth.admin.updateUserById(userId as string, { password })
+    const { error } = await admin.auth.admin.updateUserById(profile.id, { password })
 
     if (error) {
       console.error('Update user error:', error)
