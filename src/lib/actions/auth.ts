@@ -70,14 +70,17 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
 
     const admin = createAdminClient()
     console.log('Admin client created')
+    console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 
-    // Find user by email
-    console.log('Listing users...')
-    const { data: authData, error: listError } = await admin.auth.admin.listUsers()
-    console.log('List users error:', listError)
-    const users = authData?.users || []
-    console.log('Found users count:', users.length)
-    const user = users.find(u => u.email === email)
+    // Find user by email using auth API
+    console.log('Finding user by email...')
+    const { data: { users }, error: listError } = await admin.auth.admin.listUsers()
+    if (listError) {
+      console.error('List users error:', listError)
+      throw listError
+    }
+
+    const user = users?.find(u => u.email === email)
     console.log('Found user:', user?.id)
 
     if (!user) {
