@@ -75,7 +75,7 @@ export async function forgotPasswordAction(_prevState: { error: string }, formDa
       },
     })
 
-    if (error || !data?.action_link) {
+    if (error || !data?.properties?.action_link) {
       console.error('Generate link error:', error)
       return { error: 'Erro ao enviar email. Tente novamente.' }
     }
@@ -96,7 +96,7 @@ export async function forgotPasswordAction(_prevState: { error: string }, formDa
       html: `
         <h2>Recuperar Senha</h2>
         <p>Clique no link abaixo para redefinir sua senha:</p>
-        <a href="${data.action_link}">Redefinir Senha</a>
+        <a href="${data.properties?.action_link}">Redefinir Senha</a>
         <p>O link expira em 1 hora.</p>
       `,
     }
