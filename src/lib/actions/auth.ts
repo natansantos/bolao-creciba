@@ -145,8 +145,14 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
       return { error: result.error || 'Erro ao atualizar senha.', success: false }
     }
 
+    // Redirect will throw a special error, but that's expected
     redirect('/login')
-  } catch (err) {
+  } catch (err: any) {
+    // Next.js redirect throws a special error, don't treat as failure
+    if (err.digest?.startsWith('NEXT_REDIRECT')) {
+      // This is a redirect, not an error
+      throw err
+    }
     console.error('Reset password error:', err)
     return { error: 'Erro ao redefinir senha. Tente novamente.', success: false }
   }
