@@ -66,18 +66,34 @@ export async function logoutAction() {
 export async function forgotPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   try {
     const email = formData.get('email') as string
+    const token = crypto.randomUUID()
 
-    const supabase = await createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
+    // Send email with reset link using Gmail SMTP
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
     })
 
-    if (error) {
-      console.error('Supabase resetPasswordForEmail error:', error)
-      if (error.code === 'over_email_send_rate_limit') {
-        return { error: 'Muitas tentativas. Aguarde alguns minutos.', success: false }
-      }
-    }
+    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
+
+    await transporter.sendMail({
+      from: `${fromName} <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Redefinir Senha - Palpiteiros',
+      html: `
+        <p>Olá,</p>
+        <p>Clique no link abaixo para redefinir sua senha:</p>
+        <a href="${resetLink}">Redefinir Senha</a>
+        <p>Este link expira em 1 hora.</p>
+        <p>Se você não solicitou isso, ignore este email.</p>
+      `,
+    })
 
     return { success: true, error: '' }
   } catch (err) {
@@ -90,9 +106,10 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
   const token = formData.get('token') as string
+  const email = formData.get('email') as string
 
-  if (!token) {
-    return { error: 'Token inválido. Solicite um novo link.', success: false }
+  if (!token || !email) {
+    return { error: 'Link inválido. Solicite um novo link.', success: false }
   }
 
   if (password !== confirmPassword) {
@@ -103,17 +120,19 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  const supabase = await createClient()
+  const admin = createAdminClient()
 
-  // Check if user is authenticated (Supabase should have created session from recovery token)
-  const { data: { user } } = await supabase.auth.getUser()
+  // Find user by email and update password
+  const { data: { users } } = await admin.auth.admin.listUsers()
+  const user = users?.find(u => u.email === email)
 
   if (!user) {
-    return { error: 'Sessão expirada. Solicite um novo link.', success: false }
+    return { error: 'Usuário não encontrado.', success: false }
   }
 
-  // Update authenticated user's password
-  const { error: updateError } = await supabase.auth.updateUser({ password })
+  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+    password,
+  })
 
   if (updateError) {
     console.error('Error updating password:', updateError)

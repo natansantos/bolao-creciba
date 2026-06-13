@@ -27,9 +27,12 @@ export function ResetPasswordForm() {
     )
   }
 
+  const email = searchParams.get('email')
+
   return (
     <form action={action} className="space-y-4">
-      <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="token" value={token || ''} />
+      <input type="hidden" name="email" value={email || ''} />
       <div>
         <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Nova Senha
