@@ -66,42 +66,31 @@ export async function logoutAction() {
 export async function forgotPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
   try {
     const email = formData.get('email') as string
-    console.log('forgotPasswordAction called with email:', email)
-
-    const admin = createAdminClient()
-    console.log('Admin client created')
-    console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
-
-    // Find user by email using auth API
-    console.log('Finding user by email...')
-    const { data: { users }, error: listError } = await admin.auth.admin.listUsers()
-    if (listError) {
-      console.error('List users error:', listError)
-      throw listError
-    }
-
-    const user = users?.find(u => u.email === email)
-    console.log('Found user:', user?.id)
-
-    if (!user) {
-      return { error: 'Email não encontrado.', success: false }
-    }
 
     // Generate reset token
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
-    console.log('Generated token, saving to database...')
+
+    // Store token - we'll validate the email when user tries to use it
+    const admin = createAdminClient()
+
+    // First, check if user exists by trying to update their metadata
+    const { data: { users } } = await admin.auth.admin.listUsers()
+    const user = users?.find(u => u.email === email)
+
+    if (!user) {
+      // Still show success message for security (don't reveal if email exists)
+      return { success: true, error: undefined }
+    }
 
     // Save token to database
-    const { error: tokenError, data: tokenData } = await admin
+    const { error: tokenError } = await admin
       .from('password_reset_tokens')
       .insert({
         user_id: user.id,
         token,
         expires_at: expiresAt.toISOString(),
       })
-    console.log('Token save error:', tokenError)
-    console.log('Token save data:', tokenData)
 
     if (tokenError) {
       console.error('Error saving reset token:', tokenError)
@@ -137,7 +126,8 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
     return { success: true, error: undefined }
   } catch (err) {
     console.error('forgotPasswordAction error:', err)
-    return { error: 'Erro ao processar solicitação. Tente novamente.', success: false }
+    // Return success anyway to not reveal if email exists
+    return { success: true, error: undefined }
   }
 }
 
