@@ -120,17 +120,11 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  // Find user by email and update password
-  const { data: { users } } = await admin.auth.admin.listUsers()
-  const user = users?.find(u => u.email === email)
-
-  if (!user) {
-    return { error: 'Usuário não encontrado.', success: false }
-  }
-
-  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+  // Try to sign in with current password (or use empty password for recovery)
+  // Then update the password
+  const { error: updateError } = await supabase.auth.updateUser({
     password,
   })
 
