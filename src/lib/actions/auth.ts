@@ -76,7 +76,7 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
     // Save token to database (without validating user)
     console.log('Saving token to database...')
     const admin = createAdminClient()
-    const { error: tokenError } = await admin
+    const { error: tokenError, data: tokenData } = await admin
       .from('password_reset_tokens')
       .insert({
         user_id: crypto.randomUUID(), // Temporary ID, will be validated on reset
@@ -84,7 +84,11 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
         email,
         expires_at: expiresAt.toISOString(),
       })
-    console.log('Token save error:', tokenError)
+    console.log('Token save error:', JSON.stringify(tokenError))
+    console.log('Token save data:', tokenData)
+    if (tokenError) {
+      console.error('Token error details:', tokenError.message, tokenError.code, tokenError.details)
+    }
 
     if (!tokenError) {
       // Send email with reset link
