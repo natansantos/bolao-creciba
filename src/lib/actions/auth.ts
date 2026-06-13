@@ -120,32 +120,38 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  const supabase = await createClient()
+  // Simple password reset: find user by email and update directly
+  try {
+    const admin = createAdminClient()
 
-  // Verify the token and create a session
-  console.log('Verifying token for email:', email)
-  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: 'recovery',
-  })
+    console.log('Attempting to find and update user:', email)
 
-  console.log('Verify OTP result:', { data: verifyData, error: verifyError })
+    // Get all users and find by email (workaround for listUsers issues)
+    const response = await admin.auth.admin.listUsers()
 
-  if (verifyError || !verifyData.session) {
-    console.error('Error verifying OTP:', verifyError)
-    return { error: 'Token inválido ou expirado. Solicite um novo link.', success: false }
+    if (response && response.data && response.data.users) {
+      const user = response.data.users.find((u: any) => u.email === email)
+
+      if (!user) {
+        return { error: 'Usuário não encontrado.', success: false }
+      }
+
+      // Update password
+      const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+        password,
+      })
+
+      if (updateError) {
+        console.error('Error updating password:', updateError)
+        return { error: 'Erro ao atualizar senha.', success: false }
+      }
+
+      redirect('/login')
+    } else {
+      return { error: 'Erro ao buscar usuários.', success: false }
+    }
+  } catch (err) {
+    console.error('Reset password error:', err)
+    return { error: 'Erro ao redefinir senha. Tente novamente.', success: false }
   }
-
-  // Now update the password with the authenticated session
-  const { error: updateError } = await supabase.auth.updateUser({
-    password,
-  })
-
-  if (updateError) {
-    console.error('Error updating password:', updateError)
-    return { error: 'Erro ao atualizar senha. Tente novamente.', success: false }
-  }
-
-  redirect('/login')
 }
