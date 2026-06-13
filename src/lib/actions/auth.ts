@@ -81,7 +81,6 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
       .insert({
         user_id: crypto.randomUUID(), // Temporary ID, will be validated on reset
         token,
-        email,
         expires_at: expiresAt.toISOString(),
       })
     console.log('Token save error:', JSON.stringify(tokenError))
