@@ -132,16 +132,17 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
       return { error: 'Link inválido.', success: false }
     }
 
-    // Get user ID by email, then update password
     const admin = createAdminClient()
-    const { data: userData, error: getUserError } = await admin.auth.admin.getUserByEmail(email)
 
-    if (getUserError || !userData?.user) {
-      console.error('Get user error:', getUserError)
+    // Get user ID by email via SQL function (avoids problematic Auth API endpoints)
+    const { data: userId, error: rpcError } = await admin.rpc('get_user_id_by_email', { user_email: email })
+
+    if (rpcError || !userId) {
+      console.error('Get user ID error:', rpcError)
       return { error: 'Usuário não encontrado.', success: false }
     }
 
-    const { error } = await admin.auth.admin.updateUserById(userData.user.id, { password })
+    const { error } = await admin.auth.admin.updateUserById(userId as string, { password })
 
     if (error) {
       console.error('Update user error:', error)
