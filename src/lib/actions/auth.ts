@@ -67,9 +67,11 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
   const email = formData.get('email') as string
 
   const supabase = await createClient()
-  await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
   })
+
+  console.log('resetPasswordForEmail error:', error)
 
   return { success: true, error: '' }
 }
