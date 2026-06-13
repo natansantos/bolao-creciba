@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { ForgotPasswordForm } from './form'
 
 export default function ForgotPasswordPage() {
