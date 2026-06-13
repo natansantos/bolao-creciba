@@ -64,53 +64,19 @@ export async function logoutAction() {
 }
 
 export async function forgotPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
-  try {
-    const email = formData.get('email') as string
-    const token = crypto.randomUUID()
+  const email = formData.get('email') as string
 
-    // Send email with reset link using Gmail SMTP
-    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-    })
+  const supabase = await createClient()
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
+  })
 
-    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
-
-    await transporter.sendMail({
-      from: `${fromName} <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: 'Redefinir Senha - Palpiteiros',
-      html: `
-        <p>Olá,</p>
-        <p>Clique no link abaixo para redefinir sua senha:</p>
-        <a href="${resetLink}">Redefinir Senha</a>
-        <p>Este link expira em 1 hora.</p>
-        <p>Se você não solicitou isso, ignore este email.</p>
-      `,
-    })
-
-    return { success: true, error: '' }
-  } catch (err) {
-    console.error('forgotPasswordAction error:', err)
-    return { success: true, error: '' }
-  }
+  return { success: true, error: '' }
 }
 
 export async function resetPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
-  const token = formData.get('token') as string
-  const email = formData.get('email') as string
-
-  if (!token || !email) {
-    return { error: 'Link inválido. Solicite um novo link.', success: false }
-  }
 
   if (password !== confirmPassword) {
     return { error: 'As senhas não conferem.', success: false }
@@ -120,40 +86,21 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
+  const supabase = await createClient()
+
   try {
-    console.log('Calling Edge Function to reset password for:', email)
+    const { error } = await supabase.auth.updateUser({ password })
 
-    const response = await fetch(
-      'https://jaakaqvnfkiewdsqqmcz.supabase.co/functions/v1/smart-processor',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      }
-    )
-
-    const result = await response.json()
-    console.log('Edge Function response:', result)
-
-    if (!response.ok || result.error) {
-      return { error: result.error || 'Erro ao atualizar senha.', success: false }
+    if (error) {
+      console.error('Update user error:', error)
+      return { error: 'Erro ao atualizar senha.', success: false }
     }
 
-    // Redirect will throw a special error, but that's expected
     redirect('/login')
   } catch (err: any) {
-    // Next.js redirect throws a special error, don't treat as failure
     if (err.digest?.startsWith('NEXT_REDIRECT')) {
-      // This is a redirect, not an error
       throw err
     }
-    console.error('Reset password error:', err)
-    return { error: 'Erro ao redefinir senha. Tente novamente.', success: false }
+    return { error: 'Erro ao redefinir senha.', success: false }
   }
 }
