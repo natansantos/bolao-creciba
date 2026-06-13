@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import nodemailer from 'nodemailer'
 
 export async function loginAction(_prevState: { error: string }, formData: FormData) {
   const email = formData.get('email') as string
@@ -32,14 +33,23 @@ export async function registerAction(_prevState: { error: string }, formData: Fo
   })
 
   if (signupError || !authData.user) {
+    console.error('Supabase signup error:', signupError)
+    if (signupError?.code === 'user_already_exists') {
+      return { error: 'Este email já está cadastrado.' }
+    }
     return { error: 'Erro ao criar conta. Tente novamente.' }
   }
 
-  await admin.from('profiles').insert({
+  const { error: profileError } = await admin.from('profiles').insert({
     id: authData.user.id,
     name,
     is_admin: false,
   })
+
+  if (profileError) {
+    console.error('Error creating profile:', profileError)
+    return { error: 'Erro ao criar perfil do usuário. Tente novamente.' }
+  }
 
   const supabase = await createClient()
   await supabase.auth.signInWithPassword({ email, password })
@@ -56,13 +66,64 @@ export async function logoutAction() {
 export async function forgotPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
   const email = formData.get('email') as string
 
-  const supabase = await createClient()
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
-  })
+  const admin = createAdminClient()
 
-  if (error) {
-    return { error: 'Erro ao enviar email de recuperação. Tente novamente.', success: false }
+  // Find user by email
+  const { data: authData, error: findError } = await admin.auth.admin.listUsers()
+  const users = authData?.users || []
+  const user = users.find(u => u.email === email)
+
+  if (!user) {
+    return { error: 'Email não encontrado.', success: false }
+  }
+
+  // Generate reset token
+  const token = crypto.randomUUID()
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
+
+  // Save token to database
+  const { error: tokenError } = await admin
+    .from('password_reset_tokens')
+    .insert({
+      user_id: user.id,
+      token,
+      expires_at: expiresAt.toISOString(),
+    })
+
+  if (tokenError) {
+    console.error('Error saving reset token:', tokenError)
+    return { error: 'Erro ao gerar token. Tente novamente.', success: false }
+  }
+
+  // Send email with reset link
+  const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    })
+
+    await transporter.sendMail({
+      from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Redefinir Senha - Palpiteiros',
+      html: `
+        <p>Olá,</p>
+        <p>Clique no link abaixo para redefinir sua senha:</p>
+        <a href="${resetLink}">Redefinir Senha</a>
+        <p>Este link expira em 1 hora.</p>
+        <p>Se você não solicitou isso, ignore este email.</p>
+      `,
+    })
+  } catch (emailError) {
+    console.error('Error sending email:', emailError)
+    return { error: 'Erro ao enviar email. Tente novamente.', success: false }
   }
 
   return { success: true, error: undefined }
@@ -71,6 +132,11 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
 export async function resetPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
+  const token = formData.get('token') as string
+
+  if (!token) {
+    return { error: 'Token inválido. Solicite um novo link.', success: false }
+  }
 
   if (password !== confirmPassword) {
     return { error: 'As senhas não conferem.', success: false }
@@ -80,12 +146,32 @@ export async function resetPasswordAction(_prevState: { error?: string; success?
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase.auth.updateUser({ password })
+  const admin = createAdminClient()
 
-  if (error) {
-    return { error: 'Erro ao atualizar senha. Tente novamente ou solicite um novo link.', success: false }
+  // Validate token
+  const { data: tokenData, error: tokenError } = await admin
+    .from('password_reset_tokens')
+    .select('user_id')
+    .eq('token', token)
+    .gt('expires_at', new Date().toISOString())
+    .single()
+
+  if (tokenError || !tokenData) {
+    return { error: 'Link expirado ou inválido. Solicite um novo link.', success: false }
   }
+
+  // Update user password
+  const { error: updateError } = await admin.auth.admin.updateUserById(tokenData.user_id, {
+    password,
+  })
+
+  if (updateError) {
+    console.error('Error updating password:', updateError)
+    return { error: 'Erro ao atualizar senha. Tente novamente.', success: false }
+  }
+
+  // Delete used token
+  await admin.from('password_reset_tokens').delete().eq('token', token)
 
   redirect('/login')
 }
