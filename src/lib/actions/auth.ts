@@ -129,6 +129,7 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
         },
         body: JSON.stringify({
           email,
