@@ -120,36 +120,31 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  // Simple password reset: find user by email and update directly
   try {
-    const admin = createAdminClient()
+    console.log('Calling Edge Function to reset password for:', email)
 
-    console.log('Attempting to find and update user:', email)
-
-    // Get all users and find by email (workaround for listUsers issues)
-    const response = await admin.auth.admin.listUsers()
-
-    if (response && response.data && response.data.users) {
-      const user = response.data.users.find((u: any) => u.email === email)
-
-      if (!user) {
-        return { error: 'Usuário não encontrado.', success: false }
+    const response = await fetch(
+      'https://jaakaqvnfkiewdsqqmcz.supabase.co/functions/v1/smart-processor',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       }
+    )
 
-      // Update password
-      const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
-        password,
-      })
+    const result = await response.json()
+    console.log('Edge Function response:', result)
 
-      if (updateError) {
-        console.error('Error updating password:', updateError)
-        return { error: 'Erro ao atualizar senha.', success: false }
-      }
-
-      redirect('/login')
-    } else {
-      return { error: 'Erro ao buscar usuários.', success: false }
+    if (!response.ok || result.error) {
+      return { error: result.error || 'Erro ao atualizar senha.', success: false }
     }
+
+    redirect('/login')
   } catch (err) {
     console.error('Reset password error:', err)
     return { error: 'Erro ao redefinir senha. Tente novamente.', success: false }
