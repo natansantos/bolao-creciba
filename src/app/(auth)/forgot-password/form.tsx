@@ -1,33 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { resetPasswordForEmail } from '@/lib/supabase/client-actions'
+import { useActionState } from 'react'
+import { forgotPasswordAction } from '@/lib/actions/auth'
 import Link from 'next/link'
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [state, action, pending] = useActionState(forgotPasswordAction, { error: '', success: false })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    const { error: resetError } = await resetPasswordForEmail(email)
-
-    setLoading(false)
-
-    if (resetError) {
-      console.error('Reset password error:', resetError)
-      setError('Erro ao enviar email. Tente novamente.')
-    } else {
-      setSuccess(true)
-    }
-  }
-
-  if (success) {
+  if (state.success) {
     return (
       <div className="text-center">
         <p className="mb-4" style={{ color: 'var(--text-primary)' }}>
@@ -48,17 +28,16 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form action={action} className="space-y-4">
       <div>
         <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Email
         </label>
         <input
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          name="email"
           required
-          disabled={loading}
+          disabled={pending}
           className="w-full rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 transition-all disabled:opacity-50"
           style={{
             backgroundColor: 'var(--bg-base)',
@@ -69,15 +48,15 @@ export function ForgotPasswordForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={pending}
         className="w-full rounded-lg py-3 font-semibold text-sm transition-opacity disabled:opacity-60"
         style={{ backgroundColor: 'var(--accent-green)', color: '#0D0F0E' }}
       >
-        {loading ? 'Enviando...' : 'Enviar Link de Recuperação'}
+        {pending ? 'Enviando...' : 'Enviar Link de Recuperação'}
       </button>
     </form>
   )

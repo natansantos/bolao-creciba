@@ -3,7 +3,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import nodemailer from 'nodemailer'
 
 export async function loginAction(_prevState: { error: string }, formData: FormData) {
   const email = formData.get('email') as string
@@ -61,6 +60,53 @@ export async function logoutAction() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
+}
+
+export async function forgotPasswordAction(_prevState: { error: string }, formData: FormData) {
+  const email = formData.get('email') as string
+
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
+      },
+    })
+
+    if (error || !data?.action_link) {
+      console.error('Generate link error:', error)
+      return { error: 'Erro ao enviar email. Tente novamente.' }
+    }
+
+    const nodemailer = require('nodemailer')
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    })
+
+    const mailOptions = {
+      from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Recuperar Senha - Palpiteiros',
+      html: `
+        <h2>Recuperar Senha</h2>
+        <p>Clique no link abaixo para redefinir sua senha:</p>
+        <a href="${data.action_link}">Redefinir Senha</a>
+        <p>O link expira em 1 hora.</p>
+      `,
+    }
+
+    await transporter.sendMail(mailOptions)
+    return { error: '', success: true }
+  } catch (err: any) {
+    console.error('Forgot password error:', err)
+    return { error: 'Erro ao enviar email. Tente novamente.' }
+  }
 }
 
 export async function resetPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
