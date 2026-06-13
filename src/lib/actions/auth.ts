@@ -137,9 +137,16 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     // Get user ID by email via SQL function (avoids problematic Auth API endpoints)
     const { data: userId, error: rpcError } = await admin.rpc('get_user_id_by_email', { user_email: email })
 
-    if (rpcError || !userId) {
-      console.error('Get user ID error:', rpcError)
-      return { error: 'Usuário não encontrado.', success: false }
+    console.log('RPC result - email:', email, 'userId:', userId, 'error:', JSON.stringify(rpcError))
+
+    if (rpcError) {
+      console.error('RPC error:', JSON.stringify(rpcError))
+      return { error: 'Erro ao buscar usuário.', success: false }
+    }
+
+    if (!userId) {
+      console.error('User not found for email:', email)
+      return { error: 'Usuário não encontrado para este email.', success: false }
     }
 
     const { error } = await admin.auth.admin.updateUserById(userId as string, { password })

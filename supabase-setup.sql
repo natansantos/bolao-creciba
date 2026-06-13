@@ -102,6 +102,24 @@ CREATE POLICY "rounds_select_auth" ON rounds
 -- invite_links: apenas service role acessa (sem policies de usuário)
 
 -- ================================================================
+-- Função para buscar user ID por email (usada no reset de senha)
+-- ================================================================
+
+CREATE OR REPLACE FUNCTION get_user_id_by_email(user_email TEXT)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  user_id UUID;
+BEGIN
+  SELECT id INTO user_id FROM auth.users WHERE email = user_email LIMIT 1;
+  RETURN user_id;
+END;
+$$;
+
+-- ================================================================
 -- Função de Ranking
 -- ================================================================
 
