@@ -69,11 +69,16 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
     console.log('forgotPasswordAction called with email:', email)
 
     const admin = createAdminClient()
+    console.log('Admin client created')
 
     // Find user by email
-    const { data: authData } = await admin.auth.admin.listUsers()
+    console.log('Listing users...')
+    const { data: authData, error: listError } = await admin.auth.admin.listUsers()
+    console.log('List users error:', listError)
     const users = authData?.users || []
+    console.log('Found users count:', users.length)
     const user = users.find(u => u.email === email)
+    console.log('Found user:', user?.id)
 
     if (!user) {
       return { error: 'Email não encontrado.', success: false }
@@ -82,15 +87,18 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
     // Generate reset token
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
+    console.log('Generated token, saving to database...')
 
     // Save token to database
-    const { error: tokenError } = await admin
+    const { error: tokenError, data: tokenData } = await admin
       .from('password_reset_tokens')
       .insert({
         user_id: user.id,
         token,
         expires_at: expiresAt.toISOString(),
       })
+    console.log('Token save error:', tokenError)
+    console.log('Token save data:', tokenData)
 
     if (tokenError) {
       console.error('Error saving reset token:', tokenError)
