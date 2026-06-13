@@ -109,8 +109,9 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
       },
     })
 
+    const fromName = process.env.SMTP_FROM_NAME || 'Palpiteiros'
     await transporter.sendMail({
-      from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_USER}>`,
+      from: `${fromName} <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Redefinir Senha - Palpiteiros',
       html: `
