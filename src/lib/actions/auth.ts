@@ -63,19 +63,6 @@ export async function logoutAction() {
   redirect('/login')
 }
 
-export async function forgotPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
-  const email = formData.get('email') as string
-
-  const supabase = await createClient()
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`,
-  })
-
-  console.log('resetPasswordForEmail error:', error)
-
-  return { success: true, error: '' }
-}
-
 export async function resetPasswordAction(_prevState: { error: string; success: boolean }, formData: FormData) {
   const password = formData.get('password') as string
   const confirmPassword = formData.get('confirmPassword') as string
