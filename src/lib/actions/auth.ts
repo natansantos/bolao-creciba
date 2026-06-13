@@ -64,41 +64,41 @@ export async function logoutAction() {
 }
 
 export async function forgotPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
-  const email = formData.get('email') as string
-
-  const admin = createAdminClient()
-
-  // Find user by email
-  const { data: authData, error: findError } = await admin.auth.admin.listUsers()
-  const users = authData?.users || []
-  const user = users.find(u => u.email === email)
-
-  if (!user) {
-    return { error: 'Email não encontrado.', success: false }
-  }
-
-  // Generate reset token
-  const token = crypto.randomUUID()
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
-
-  // Save token to database
-  const { error: tokenError } = await admin
-    .from('password_reset_tokens')
-    .insert({
-      user_id: user.id,
-      token,
-      expires_at: expiresAt.toISOString(),
-    })
-
-  if (tokenError) {
-    console.error('Error saving reset token:', tokenError)
-    return { error: 'Erro ao gerar token. Tente novamente.', success: false }
-  }
-
-  // Send email with reset link
-  const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
-
   try {
+    const email = formData.get('email') as string
+    console.log('forgotPasswordAction called with email:', email)
+
+    const admin = createAdminClient()
+
+    // Find user by email
+    const { data: authData } = await admin.auth.admin.listUsers()
+    const users = authData?.users || []
+    const user = users.find(u => u.email === email)
+
+    if (!user) {
+      return { error: 'Email não encontrado.', success: false }
+    }
+
+    // Generate reset token
+    const token = crypto.randomUUID()
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
+
+    // Save token to database
+    const { error: tokenError } = await admin
+      .from('password_reset_tokens')
+      .insert({
+        user_id: user.id,
+        token,
+        expires_at: expiresAt.toISOString(),
+      })
+
+    if (tokenError) {
+      console.error('Error saving reset token:', tokenError)
+      return { error: 'Erro ao gerar token. Tente novamente.', success: false }
+    }
+
+    // Send email with reset link
+    const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -122,12 +122,12 @@ export async function forgotPasswordAction(_prevState: { error?: string; success
         <p>Se você não solicitou isso, ignore este email.</p>
       `,
     })
-  } catch (emailError) {
-    console.error('Error sending email:', emailError)
-    return { error: 'Erro ao enviar email. Tente novamente.', success: false }
-  }
 
-  return { success: true, error: undefined }
+    return { success: true, error: undefined }
+  } catch (err) {
+    console.error('forgotPasswordAction error:', err)
+    return { error: 'Erro ao processar solicitação. Tente novamente.', success: false }
+  }
 }
 
 export async function resetPasswordAction(_prevState: { error?: string; success?: boolean }, formData: FormData) {
