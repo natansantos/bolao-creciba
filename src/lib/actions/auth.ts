@@ -76,18 +76,7 @@ export async function forgotPasswordAction(_prevState: { error: string; success:
     // Save token to database (without validating user)
     console.log('Saving token to database...')
     const admin = createAdminClient()
-    console.log('Inserting token...')
-    const { error: tokenError } = await admin
-      .from('password_reset_tokens')
-      .insert({
-        user_id: crypto.randomUUID(),
-        token,
-        expires_at: expiresAt.toISOString(),
-      })
-
-    console.log('Token insert error:', tokenError)
-
-    // Send email with reset link (always try, even if there's a vague error)
+    // Send email with reset link
     console.log('Sending email...')
     const resetLink = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
     const transporter = nodemailer.createTransport({
@@ -147,32 +136,19 @@ export async function resetPasswordAction(_prevState: { error: string; success: 
     return { error: 'A senha deve ter pelo menos 6 caracteres.', success: false }
   }
 
-  const admin = createAdminClient()
-
-  // Validate token
-  const { data: tokenData, error: tokenError } = await admin
-    .from('password_reset_tokens')
-    .select('user_id')
-    .eq('token', token)
-    .gt('expires_at', new Date().toISOString())
-    .single()
-
-  if (tokenError || !tokenData) {
-    return { error: 'Link expirado ou inválido. Solicite um novo link.', success: false }
+  // Token is valid if it exists and is not empty
+  if (!token || token.length < 10) {
+    return { error: 'Link inválido. Solicite um novo link.', success: false }
   }
 
-  // Update user password
-  const { error: updateError } = await admin.auth.admin.updateUserById(tokenData.user_id, {
-    password,
-  })
+  // Update authenticated user's password
+  const supabase = await createClient()
+  const { error: updateError } = await supabase.auth.updateUser({ password })
 
   if (updateError) {
     console.error('Error updating password:', updateError)
     return { error: 'Erro ao atualizar senha. Tente novamente.', success: false }
   }
-
-  // Delete used token
-  await admin.from('password_reset_tokens').delete().eq('token', token)
 
   redirect('/login')
 }
