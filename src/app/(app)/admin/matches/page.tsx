@@ -1,9 +1,17 @@
 import { requireAdmin } from '@/lib/require-admin'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createMatchAction } from '@/lib/actions/admin'
+import { createMatchAction, updateMatchTimeAction } from '@/lib/actions/admin'
 import { getTeamNamePTBR } from '@/lib/team-names'
 import { getFlagUrl } from '@/lib/country-codes'
+import ResyncTimesButton from '@/components/resync-times-button'
 import type { Round, Match } from '@/lib/types'
+
+function toBrasiliaDatetimeLocal(utcString: string): string {
+  const d = new Date(utcString)
+  // UTC-3 (Brasília, sem DST desde 2019)
+  const local = new Date(d.getTime() - 3 * 60 * 60 * 1000)
+  return local.toISOString().slice(0, 16)
+}
 
 export default async function MatchesPage() {
   await requireAdmin()
@@ -19,6 +27,8 @@ export default async function MatchesPage() {
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Jogos</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Adicione os jogos de cada rodada</p>
+
+      <ResyncTimesButton />
 
       <form action={createMatchAction} className="rounded-xl border p-4 mb-6 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}>
         <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Novo Jogo</p>
@@ -82,7 +92,7 @@ export default async function MatchesPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Data e hora</label>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Data e hora (Brasília)</label>
             <input
               type="datetime-local"
               name="match_time"
@@ -127,49 +137,68 @@ export default async function MatchesPage() {
           return (
           <div
             key={match.id}
-            className="rounded-xl border p-3 flex items-center gap-3"
+            className="rounded-xl border p-3 space-y-2"
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}
           >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="flex items-center gap-1">
-                  {homeFlagUrl && (
-                    <div className="w-5 h-3.5 rounded overflow-hidden shrink-0 shadow-sm">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={homeFlagUrl} alt={homeName} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {homeName}
-                  </span>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1">
+                    {homeFlagUrl && (
+                      <div className="w-5 h-3.5 rounded overflow-hidden shrink-0 shadow-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={homeFlagUrl} alt={homeName} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {homeName}
+                    </span>
+                  </div>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>×</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {awayName}
+                    </span>
+                    {awayFlagUrl && (
+                      <div className="w-5 h-3.5 rounded overflow-hidden shrink-0 shadow-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={awayFlagUrl} alt={awayName} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>×</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {awayName}
-                  </span>
-                  {awayFlagUrl && (
-                    <div className="w-5 h-3.5 rounded overflow-hidden shrink-0 shadow-sm">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={awayFlagUrl} alt={awayName} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                </div>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {(match.rounds as { name: string } | undefined)?.name} · {new Date(match.match_time).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })} (Brasília)
+                  {match.is_knockout && ' · Eliminatório'}
+                </p>
               </div>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {(match.rounds as { name: string } | undefined)?.name} · {new Date(match.match_time).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                {match.is_knockout && ' · Eliminatório'}
-              </p>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor: match.status === 'finished' ? 'rgba(255,214,0,0.1)' : match.status === 'live' ? 'rgba(255,100,100,0.1)' : 'rgba(255,255,255,0.05)',
+                  color: match.status === 'finished' ? 'var(--accent-yellow)' : match.status === 'live' ? '#ff6464' : 'var(--text-muted)',
+                }}
+              >
+                {match.status}
+              </span>
             </div>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: match.status === 'finished' ? 'rgba(255,214,0,0.1)' : match.status === 'live' ? 'rgba(255,100,100,0.1)' : 'rgba(255,255,255,0.05)',
-                color: match.status === 'finished' ? 'var(--accent-yellow)' : match.status === 'live' ? '#ff6464' : 'var(--text-muted)',
-              }}
-            >
-              {match.status}
-            </span>
+            <form action={updateMatchTimeAction} className="flex items-center gap-2">
+              <input type="hidden" name="match_id" value={match.id} />
+              <input
+                type="datetime-local"
+                name="match_time"
+                defaultValue={toBrasiliaDatetimeLocal(match.match_time)}
+                className="flex-1 rounded-lg px-2 py-1 text-xs outline-none"
+                style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--bg-border)', color: 'var(--text-primary)' }}
+              />
+              <button
+                type="submit"
+                className="text-xs px-3 py-1 rounded-lg font-medium shrink-0"
+                style={{ backgroundColor: 'rgba(0,230,118,0.15)', color: 'var(--accent-green)', border: '1px solid var(--accent-green)' }}
+              >
+                Corrigir horário
+              </button>
+            </form>
           </div>
           )
         })}

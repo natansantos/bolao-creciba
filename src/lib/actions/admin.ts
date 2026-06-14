@@ -67,13 +67,151 @@ export async function createMatchAction(formData: FormData) {
     away_team: awayTeam,
     home_flag: homeFlag,
     away_flag: awayFlag,
-    match_time: new Date(matchTime).toISOString(),
+    match_time: new Date(matchTime + '-03:00').toISOString(),
     is_knockout: isKnockout,
     api_fixture_id: apiFixtureId ? parseInt(apiFixtureId as string) : null,
     status: 'upcoming',
   })
 
   revalidatePath('/admin/matches')
+}
+
+export async function updateMatchTimeAction(formData: FormData) {
+  await assertAdmin()
+  const admin = createAdminClient()
+
+  const matchId = formData.get('match_id') as string
+  const matchTime = formData.get('match_time') as string
+  // datetime-local input is in Brasília time (UTC-3)
+  const matchTimeUtc = new Date(matchTime + '-03:00').toISOString()
+
+  await admin.from('matches').update({ match_time: matchTimeUtc }).eq('id', matchId)
+  revalidatePath('/admin/matches')
+  revalidatePath('/predictions')
+}
+
+export async function resyncMatchTimesAction(): Promise<{
+  error: string | null
+  updated: number
+  skipped: string[]
+  report: string[]
+}> {
+  try {
+    await assertAdmin()
+  } catch {
+    return { error: 'Sem permissão', updated: 0, skipped: [], report: [] }
+  }
+
+  const admin = createAdminClient()
+  const apiKey = process.env.ZAFRONIX_API_KEY
+  if (!apiKey) return { error: 'ZAFRONIX_API_KEY não configurada', updated: 0, skipped: [], report: [] }
+
+  try {
+    const res = await fetch('https://api.zafronix.com/fifa/worldcup/v1/matches?year=2026', {
+      headers: { 'X-API-Key': apiKey },
+      cache: 'no-store',
+    })
+    if (!res.ok) return { error: `Erro na API: HTTP ${res.status}`, updated: 0, skipped: [], report: [] }
+
+    const json = await res.json()
+    const apiMatches: ZafronixMatch[] = json?.data ?? []
+
+    const { data: dbMatches } = await admin.from('matches').select('id, home_team, away_team, match_time')
+    if (!dbMatches) return { error: 'Erro ao buscar jogos do banco', updated: 0, skipped: [], report: [] }
+
+    let updated = 0
+    const report: string[] = []
+    const skipped: string[] = []
+
+    const toBRT = (iso: string) =>
+      new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ')
+
+    for (const db of dbMatches) {
+      const api = apiMatches.find(m => m.homeTeam === db.home_team && m.awayTeam === db.away_team)
+
+      if (!api) {
+        skipped.push(`Não achado na API: ${db.home_team} × ${db.away_team}`)
+        continue
+      }
+
+      if (!api.kickoffUtc) {
+        skipped.push(`kickoffUtc nulo: ${db.home_team} × ${db.away_team}`)
+        continue
+      }
+
+      const currentIso = new Date(db.match_time).toISOString()
+      const apiIso = new Date(api.kickoffUtc).toISOString()
+
+      if (currentIso === apiIso) continue
+
+      await admin.from('matches').update({ match_time: apiIso }).eq('id', db.id)
+      report.push(`${db.home_team} × ${db.away_team}: ${toBRT(currentIso)} → ${toBRT(apiIso)} (Brasília)`)
+      updated++
+    }
+
+    revalidatePath('/admin/matches')
+    revalidatePath('/predictions')
+    revalidatePath('/ranking')
+
+    return { error: null, updated, skipped, report }
+  } catch (e) {
+    return { error: `Exceção: ${e instanceof Error ? e.message : String(e)}`, updated: 0, skipped: [], report: [] }
+  }
+}
+
+export async function recalculateAllPointsAction(): Promise<{ error: string | null; matches: number; predictions: number }> {
+  try {
+    await assertAdmin()
+  } catch {
+    return { error: 'Sem permissão', matches: 0, predictions: 0 }
+  }
+
+  const admin = createAdminClient()
+
+  const { data: finishedMatches } = await admin
+    .from('matches')
+    .select('id, home_score, away_score, went_to_penalties, penalty_winner')
+    .eq('status', 'finished')
+
+  if (!finishedMatches || finishedMatches.length === 0) {
+    return { error: null, matches: 0, predictions: 0 }
+  }
+
+  let totalPredictions = 0
+
+  for (const match of finishedMatches) {
+    if (match.home_score === null || match.away_score === null) continue
+
+    const { data: predictions } = await admin
+      .from('predictions')
+      .select('id, home_score_pred, away_score_pred, penalty_winner_pred')
+      .eq('match_id', match.id)
+
+    for (const pred of predictions ?? []) {
+      const points = calculatePoints(
+        {
+          home_score: match.home_score,
+          away_score: match.away_score,
+          went_to_penalties: match.went_to_penalties ?? false,
+          penalty_winner: match.penalty_winner ?? null,
+        },
+        {
+          home_score_pred: pred.home_score_pred,
+          away_score_pred: pred.away_score_pred,
+          penalty_winner_pred: pred.penalty_winner_pred ?? null,
+        }
+      )
+      await admin.from('predictions').update({ points }).eq('id', pred.id)
+      totalPredictions++
+    }
+  }
+
+  revalidatePath('/predictions')
+  revalidatePath('/ranking')
+  revalidatePath('/history')
+  revalidatePath('/admin/results')
+
+  return { error: null, matches: finishedMatches.length, predictions: totalPredictions }
 }
 
 export async function saveResultAction(formData: FormData) {

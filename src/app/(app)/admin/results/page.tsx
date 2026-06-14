@@ -4,6 +4,7 @@ import { saveResultAction, syncFromApiAction } from '@/lib/actions/admin'
 import { getTeamNamePTBR } from '@/lib/team-names'
 import { getFlagUrl } from '@/lib/country-codes'
 import SyncAllButton from '@/components/sync-all-button'
+import RecalculatePointsButton from '@/components/recalculate-points-button'
 import type { Match } from '@/lib/types'
 
 export default async function ResultsPage() {
@@ -30,7 +31,10 @@ export default async function ResultsPage() {
           <h1 className="font-bebas text-4xl mb-1" style={{ color: 'var(--text-primary)' }}>Resultados</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Registre os resultados dos jogos</p>
         </div>
-        <SyncAllButton />
+        <div className="flex flex-col items-end gap-2">
+          <SyncAllButton />
+          <RecalculatePointsButton />
+        </div>
       </div>
 
       <h2 className="font-semibold text-sm mb-3" style={{ color: 'var(--text-muted)' }}>PENDENTES</h2>
