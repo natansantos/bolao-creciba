@@ -67,8 +67,15 @@ export default function MatchCard({ match, prediction, round }: Props) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [deadlinePassed, setDeadlinePassed] = useState(() => !isPredictionAllowed(match.match_time))
 
-  const deadlinePassed = !isPredictionAllowed(match.match_time)
+  useEffect(() => {
+    const msUntilDeadline = getDeadline(match.match_time).getTime() - Date.now()
+    if (msUntilDeadline <= 0) return
+    const timer = setTimeout(() => setDeadlinePassed(true), msUntilDeadline)
+    return () => clearTimeout(timer)
+  }, [match.match_time])
+
   const matchDate = new Date(match.match_time)
   const homeName = getTeamNamePTBR(match.home_team)
   const awayName = getTeamNamePTBR(match.away_team)
@@ -247,13 +254,13 @@ export default function MatchCard({ match, prediction, round }: Props) {
           </div>
         )}
 
-        {deadlinePassed && prediction && (
+        {deadlinePassed && match.status === 'finished' && match.home_score !== null && match.away_score !== null && (
           <div className="mt-3 pt-3 border-t flex items-center justify-center gap-2" style={{ borderColor: 'var(--bg-border)' }}>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Seu palpite:</span>
-            <span className="font-bebas text-xl" style={{ color: 'var(--accent-yellow)' }}>
-              {prediction.home_score_pred} × {prediction.away_score_pred}
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Resultado:</span>
+            <span className="font-bebas text-xl" style={{ color: 'var(--text-primary)' }}>
+              {match.home_score} × {match.away_score}
             </span>
-            {prediction.points !== null && (
+            {prediction?.points !== null && prediction?.points !== undefined && (
               <span
                 className="text-sm font-bold px-2 py-0.5 rounded-full"
                 style={{ backgroundColor: 'rgba(0,230,118,0.1)', color: 'var(--accent-green)' }}
