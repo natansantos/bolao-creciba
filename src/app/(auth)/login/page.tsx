@@ -40,9 +40,14 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                Senha
-              </label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                  Senha
+                </label>
+                <Link href="/forgot-password" className="text-xs" style={{ color: 'var(--accent-green)' }}>
+                  Esqueceu?
+                </Link>
+              </div>
               <input
                 type="password"
                 name="password"
