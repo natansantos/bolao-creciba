@@ -10,32 +10,32 @@ export default function PwaInstallBanner() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    // Already installed as PWA — hide banner
     if (window.matchMedia('(display-mode: standalone)').matches) return
-
-    // Already dismissed in this session
     if (sessionStorage.getItem('pwa-banner-dismissed')) return
 
     const ua = navigator.userAgent
     const isIOS = /iphone|ipad|ipod/i.test(ua)
     const isAndroid = /android/i.test(ua)
-    const isMobile = isIOS || isAndroid
 
-    if (!isMobile) return
+    if (!isIOS && !isAndroid) return
 
-    if (isIOS) {
-      // iOS never fires beforeinstallprompt — show manual instructions
-      setPlatform('ios')
+    // Register SW proactively so Chrome can evaluate installability criteria
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
     }
 
-    // Android: wait for browser prompt event
-    function onBeforeInstall(e: Event) {
-      e.preventDefault()
-      setDeferredPrompt(e)
-      setPlatform('android')
+    // Show banner immediately — don't wait for beforeinstallprompt
+    setPlatform(isIOS ? 'ios' : 'android')
+
+    if (isAndroid) {
+      // Capture native prompt if Chrome offers it (may fire later or not at all)
+      const handler = (e: Event) => {
+        e.preventDefault()
+        setDeferredPrompt(e)
+      }
+      window.addEventListener('beforeinstallprompt', handler)
+      return () => window.removeEventListener('beforeinstallprompt', handler)
     }
-    window.addEventListener('beforeinstallprompt', onBeforeInstall)
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
   }, [])
 
   function dismiss() {
@@ -43,12 +43,13 @@ export default function PwaInstallBanner() {
     setDismissed(true)
   }
 
-  async function installAndroid() {
-    if (!deferredPrompt) return
-    deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') setDismissed(true)
-    setDeferredPrompt(null)
+  async function install() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') setDismissed(true)
+      setDeferredPrompt(null)
+    }
   }
 
   if (!platform || dismissed) return null
@@ -62,9 +63,8 @@ export default function PwaInstallBanner() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
       }}
     >
-      {/* Icon */}
       <div
-        className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
+        className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg"
         style={{ backgroundColor: '#0D0F0E', color: 'var(--accent-green)' }}
       >
         P
@@ -75,36 +75,45 @@ export default function PwaInstallBanner() {
           Instale o Palpiteiros
         </p>
 
-        {platform === 'ios' ? (
+        {platform === 'ios' && (
           <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Toque em{' '}
-            <span style={{ color: 'var(--text-primary)' }}>
-              <ShareIcon /> Compartilhar
-            </span>
-            {' '}→{' '}
-            <span style={{ color: 'var(--text-primary)' }}>Adicionar à Tela de Início</span>
-            {' '}para receber notificações.
-          </p>
-        ) : (
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Instale para receber notificações de palpites e resultados.
+            Toque em <ShareIcon />{' '}
+            <span style={{ color: 'var(--text-primary)' }}>Compartilhar</span> →{' '}
+            <span style={{ color: 'var(--text-primary)' }}>Adicionar à Tela de Início</span>{' '}
+            para receber notificações.
           </p>
         )}
 
         {platform === 'android' && (
-          <button
-            onClick={installAndroid}
-            className="mt-2 px-3 py-1 rounded-lg text-xs font-semibold"
-            style={{ backgroundColor: 'var(--accent-green)', color: '#0D0F0E' }}
-          >
-            Instalar app
-          </button>
+          <>
+            {deferredPrompt ? (
+              <>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Instale para receber notificações de palpites e resultados.
+                </p>
+                <button
+                  onClick={install}
+                  className="mt-2 px-3 py-1 rounded-lg text-xs font-semibold"
+                  style={{ backgroundColor: 'var(--accent-green)', color: '#0D0F0E' }}
+                >
+                  Instalar app
+                </button>
+              </>
+            ) : (
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                Toque nos{' '}
+                <span style={{ color: 'var(--text-primary)' }}>⋮ três pontos</span> do Chrome →{' '}
+                <span style={{ color: 'var(--text-primary)' }}>Adicionar à tela inicial</span>{' '}
+                para receber notificações.
+              </p>
+            )}
+          </>
         )}
       </div>
 
       <button
         onClick={dismiss}
-        className="shrink-0 text-lg leading-none self-start"
+        className="shrink-0 text-xl leading-none self-start"
         style={{ color: 'var(--text-muted)' }}
         aria-label="Fechar"
       >
