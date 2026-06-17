@@ -1,11 +1,5 @@
 import webpush from 'web-push'
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
-
 export interface PushPayload {
   title: string
   body: string
@@ -20,11 +14,19 @@ export type PushSubscriptionJSON = {
 
 /**
  * Returns false when the subscription is gone (410/404) so the caller can delete it.
+ * VAPID details are initialized lazily so the module can be imported during build
+ * without requiring the env vars to be present at that point.
  */
 export async function sendPush(
   subscription: PushSubscriptionJSON,
   payload: PushPayload
 ): Promise<boolean> {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!
+  )
+
   try {
     await webpush.sendNotification(
       subscription as webpush.PushSubscription,
