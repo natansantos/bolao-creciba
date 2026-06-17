@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculatePoints } from '@/lib/scoring'
+import { sendPush, type PushSubscriptionJSON } from '@/lib/push'
 
 // Vercel sends Authorization: Bearer $CRON_SECRET automatically for cron-triggered requests.
 // External cron services (cron-job.org etc.) must include the same header manually.
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
 
     const { data: predictions } = await admin
       .from('predictions')
-      .select('id, home_score_pred, away_score_pred, penalty_winner_pred')
+      .select('id, user_id, home_score_pred, away_score_pred, penalty_winner_pred')
       .eq('match_id', match.id)
 
     for (const pred of predictions ?? []) {
@@ -85,11 +86,156 @@ export async function GET(request: Request) {
         { home_score_pred: pred.home_score_pred, away_score_pred: pred.away_score_pred, penalty_winner_pred: pred.penalty_winner_pred ?? null }
       )
       await admin.from('predictions').update({ points }).eq('id', pred.id)
+
+      await sendResultNotification(admin, pred.user_id, match, homeScore, awayScore, points)
     }
+
+    await sendRoundSummaryIfComplete(admin, match)
 
     log.push(`synced: ${match.home_team} × ${match.away_team} ${homeScore}-${awayScore}`)
     synced++
   }
 
   return NextResponse.json({ synced, checked: pendingMatches.length, log })
+}
+
+function pointsLabel(points: number): string {
+  if (points === 10) return '🎯 Placar exato!'
+  if (points >= 7)   return '✅ Resultado + gol certo'
+  if (points >= 5)   return '✅ Resultado certo'
+  if (points >= 2)   return '⚽ Parcialmente certo'
+  return '❌ Sem pontos desta vez'
+}
+
+async function sendResultNotification(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  match: { id: string; home_team: string; away_team: string },
+  homeScore: number,
+  awayScore: number,
+  points: number
+) {
+  const { data: already } = await admin
+    .from('notification_log')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('type', 'match_result')
+    .eq('reference_id', match.id)
+    .maybeSingle()
+
+  if (already) return
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('notify_result')
+    .eq('id', userId)
+    .single()
+
+  if (!profile?.notify_result) return
+
+  const { data: subs } = await admin
+    .from('push_subscriptions')
+    .select('subscription, endpoint')
+    .eq('user_id', userId)
+
+  let sent = false
+  for (const row of subs ?? []) {
+    const ok = await sendPush(row.subscription as PushSubscriptionJSON, {
+      title: `${match.home_team} ${homeScore}×${awayScore} ${match.away_team}`,
+      body: `${pointsLabel(points)} — +${points} pontos`,
+      url: '/history',
+      tag: `result-${match.id}`,
+    })
+    if (!ok) {
+      await admin.from('push_subscriptions').delete().eq('endpoint', row.endpoint)
+    } else {
+      sent = true
+    }
+  }
+
+  if (sent) {
+    await admin.from('notification_log').insert({
+      user_id: userId,
+      type: 'match_result',
+      reference_id: match.id,
+    })
+  }
+}
+
+async function sendRoundSummaryIfComplete(
+  admin: ReturnType<typeof createAdminClient>,
+  finishedMatch: { id: string }
+) {
+  // Find the round this match belongs to
+  const { data: matchRow } = await admin
+    .from('matches')
+    .select('round_id')
+    .eq('id', finishedMatch.id)
+    .single()
+
+  if (!matchRow?.round_id) return
+
+  // Check if all matches in the round are finished
+  const { data: roundMatches } = await admin
+    .from('matches')
+    .select('id, status')
+    .eq('round_id', matchRow.round_id)
+
+  if (!roundMatches || roundMatches.some(m => m.status !== 'finished')) return
+
+  // All done — send round summary to each user
+  const { data: users } = await admin
+    .from('profiles')
+    .select('id, name')
+    .eq('notify_round_summary', true)
+
+  for (const user of users ?? []) {
+    const { data: already } = await admin
+      .from('notification_log')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('type', 'round_summary')
+      .eq('reference_id', matchRow.round_id)
+      .maybeSingle()
+
+    if (already) continue
+
+    // Sum points for this round
+    const matchIds = roundMatches.map(m => m.id)
+    const { data: preds } = await admin
+      .from('predictions')
+      .select('points')
+      .eq('user_id', user.id)
+      .in('match_id', matchIds)
+
+    const total = (preds ?? []).reduce((sum, p) => sum + (p.points ?? 0), 0)
+
+    const { data: subs } = await admin
+      .from('push_subscriptions')
+      .select('subscription, endpoint')
+      .eq('user_id', user.id)
+
+    let sent = false
+    for (const row of subs ?? []) {
+      const ok = await sendPush(row.subscription as PushSubscriptionJSON, {
+        title: '🏁 Rodada encerrada!',
+        body: `Você fez ${total} ponto${total !== 1 ? 's' : ''} nesta rodada. Veja o ranking!`,
+        url: '/ranking',
+        tag: `round-${matchRow.round_id}`,
+      })
+      if (!ok) {
+        await admin.from('push_subscriptions').delete().eq('endpoint', row.endpoint)
+      } else {
+        sent = true
+      }
+    }
+
+    if (sent) {
+      await admin.from('notification_log').insert({
+        user_id: user.id,
+        type: 'round_summary',
+        reference_id: matchRow.round_id,
+      })
+    }
+  }
 }
