@@ -14,10 +14,10 @@ type Status = 'loading' | 'unsupported' | 'denied' | 'subscribed' | 'unsubscribe
 export default function PushNotificationManager() {
   const [status, setStatus] = useState<Status>('loading')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      // iOS Safari without PWA install
       const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
       setStatus(isIOS && !isStandalone ? 'needs-install' : 'unsupported')
@@ -37,10 +37,18 @@ export default function PushNotificationManager() {
   }, [])
 
   async function subscribe() {
+    setError(null)
     setBusy(true)
     try {
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!vapidKey) {
+        setError('Chave VAPID não configurada no servidor.')
+        return
+      }
+
       const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      await navigator.serviceWorker.ready
+      // Wait for the SW to be active (may need a page reload on first install)
+      const activeReg = await navigator.serviceWorker.ready
 
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
@@ -48,11 +56,9 @@ export default function PushNotificationManager() {
         return
       }
 
-      const sub = await reg.pushManager.subscribe({
+      const sub = await activeReg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-        ),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       })
 
       const res = await fetch('/api/push/subscribe', {
@@ -61,15 +67,26 @@ export default function PushNotificationManager() {
         body: JSON.stringify(sub.toJSON()),
       })
 
-      if (res.ok) setStatus('subscribed')
-    } catch (err) {
+      if (!res.ok) {
+        setError('Erro ao salvar assinatura. Tente novamente.')
+        return
+      }
+
+      setStatus('subscribed')
+    } catch (err: any) {
       console.error('Push subscribe error:', err)
+      if (err?.name === 'NotAllowedError') {
+        setStatus('denied')
+      } else {
+        setError('Não foi possível ativar as notificações. Verifique se o app está instalado na tela inicial.')
+      }
     } finally {
       setBusy(false)
     }
   }
 
   async function unsubscribe() {
+    setError(null)
     setBusy(true)
     try {
       const reg = await navigator.serviceWorker.ready
@@ -85,6 +102,7 @@ export default function PushNotificationManager() {
       setStatus('unsubscribed')
     } catch (err) {
       console.error('Push unsubscribe error:', err)
+      setError('Erro ao desativar. Tente novamente.')
     } finally {
       setBusy(false)
     }
@@ -103,8 +121,8 @@ export default function PushNotificationManager() {
         </p>
         <p style={{ color: 'var(--text-muted)' }}>
           Toque em <strong style={{ color: 'var(--text-primary)' }}>Compartilhar</strong> →{' '}
-          <strong style={{ color: 'var(--text-primary)' }}>Adicionar à Tela de Início</strong> para
-          receber notificações push no iOS.
+          <strong style={{ color: 'var(--text-primary)' }}>Adicionar à Tela de Início</strong> e
+          abra o app por lá para receber notificações.
         </p>
       </div>
     )
@@ -121,7 +139,7 @@ export default function PushNotificationManager() {
   if (status === 'denied') {
     return (
       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-        Permissão bloqueada. Habilite notificações nas configurações do navegador.
+        Permissão bloqueada. Habilite notificações nas configurações do navegador e recarregue a página.
       </p>
     )
   }
@@ -129,27 +147,35 @@ export default function PushNotificationManager() {
   const isOn = status === 'subscribed'
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-          Notificações push
-        </p>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          {isOn ? 'Ativo neste dispositivo' : 'Desativado neste dispositivo'}
-        </p>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            Notificações push
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            {isOn ? 'Ativo neste dispositivo' : 'Desativado neste dispositivo'}
+          </p>
+        </div>
+        <button
+          onClick={isOn ? unsubscribe : subscribe}
+          disabled={busy}
+          aria-label={isOn ? 'Desativar notificações' : 'Ativar notificações'}
+          className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-40"
+          style={{ backgroundColor: isOn ? 'var(--accent-green)' : 'var(--bg-border)' }}
+        >
+          <span
+            className="inline-block h-4 w-4 rounded-full bg-white transition-transform"
+            style={{ transform: isOn ? 'translateX(1.375rem)' : 'translateX(0.125rem)' }}
+          />
+        </button>
       </div>
-      <button
-        onClick={isOn ? unsubscribe : subscribe}
-        disabled={busy}
-        aria-label={isOn ? 'Desativar notificações' : 'Ativar notificações'}
-        className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
-        style={{ backgroundColor: isOn ? 'var(--accent-green)' : 'var(--bg-border)' }}
-      >
-        <span
-          className="inline-block h-4 w-4 rounded-full bg-white transition-transform"
-          style={{ transform: isOn ? 'translateX(1.375rem)' : 'translateX(0.125rem)' }}
-        />
-      </button>
+
+      {error && (
+        <p className="text-xs" style={{ color: '#ff5252' }}>
+          {error}
+        </p>
+      )}
     </div>
   )
 }
