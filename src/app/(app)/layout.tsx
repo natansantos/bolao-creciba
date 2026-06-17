@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Sidebar from '@/components/sidebar'
 import BottomNav from '@/components/bottom-nav'
+import PwaInstallBanner from '@/components/pwa-install-banner'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </main>
       <BottomNav isAdmin={profile?.is_admin ?? false} />
+      <PwaInstallBanner />
     </div>
   )
 }
