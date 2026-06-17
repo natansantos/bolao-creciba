@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useActionState } from 'react'
 import { updateNotificationPrefsAction } from '@/lib/actions/notifications'
 
@@ -20,8 +21,10 @@ function Toggle({
   description: string
   defaultChecked: boolean
 }) {
+  const [checked, setChecked] = useState(defaultChecked)
+
   return (
-    <label className="flex items-center justify-between gap-4 cursor-pointer">
+    <div className="flex items-center justify-between gap-4">
       <div>
         <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
           {label}
@@ -30,20 +33,22 @@ function Toggle({
           {description}
         </p>
       </div>
-      <input
-        type="checkbox"
-        name={name}
-        defaultChecked={defaultChecked}
-        className="sr-only peer"
-      />
-      <div
-        className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors peer-checked:bg-[var(--accent-green)]"
-        style={{ backgroundColor: 'var(--bg-border)' }}
-        aria-hidden="true"
+      {/* hidden input carries the value on form submit */}
+      <input type="hidden" name={name} value={checked ? 'on' : 'off'} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => setChecked(v => !v)}
+        className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+        style={{ backgroundColor: checked ? 'var(--accent-green)' : 'var(--bg-border)' }}
       >
-        <span className="inline-block h-4 w-4 m-1 rounded-full bg-white transition-transform peer-group-checked:translate-x-5" />
-      </div>
-    </label>
+        <span
+          className="inline-block h-4 w-4 rounded-full bg-white transition-transform"
+          style={{ transform: checked ? 'translateX(1.375rem)' : 'translateX(0.125rem)' }}
+        />
+      </button>
+    </div>
   )
 }
 
