@@ -21,8 +21,8 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  // Only matches that should have ended: match_time + 100 min < now (90 min game + 10 min buffer)
-  const cutoff = new Date(Date.now() - 100 * 60 * 1000).toISOString()
+  // Only matches that should have ended: match_time + 120 min < now (90 min game + 30 min buffer)
+  const cutoff = new Date(Date.now() - 120 * 60 * 1000).toISOString()
 
   const { data: pendingMatches } = await admin
     .from('matches')
@@ -49,6 +49,13 @@ export async function GET(request: Request) {
     awayTeam: string
     homeScore: number | null
     awayScore: number | null
+    // optional fields the API may return indicating actual match end
+    status?: string
+    matchStatus?: string
+    state?: string
+    endedAt?: string
+    finishedAt?: string
+    endTime?: string
   }> = json?.data ?? []
 
   let synced = 0
@@ -62,6 +69,25 @@ export async function GET(request: Request) {
     if (!apiMatch || apiMatch.homeScore === null || apiMatch.awayScore === null) {
       log.push(`pending: ${match.home_team} × ${match.away_team}`)
       continue
+    }
+
+    // If the API reports a status, only finalize when it indicates the match is over.
+    // This prevents recording partial scores for matches still in progress.
+    const apiStatus = (apiMatch.status ?? apiMatch.matchStatus ?? apiMatch.state ?? '').toUpperCase()
+    if (apiStatus && !['FINISHED', 'FT', 'COMPLETED', 'ENDED', 'FULL_TIME', 'POST'].includes(apiStatus)) {
+      log.push(`in-progress (status=${apiStatus}): ${match.home_team} × ${match.away_team}`)
+      continue
+    }
+
+    // If the API provides the actual end time, use it for the 30-min buffer check instead of estimated match_time.
+    const apiEndRaw = apiMatch.endedAt ?? apiMatch.finishedAt ?? apiMatch.endTime
+    if (apiEndRaw) {
+      const endedAt = new Date(apiEndRaw)
+      const bufferMs = 30 * 60 * 1000
+      if (Date.now() < endedAt.getTime() + bufferMs) {
+        log.push(`too-soon after end (ended=${apiEndRaw}): ${match.home_team} × ${match.away_team}`)
+        continue
+      }
     }
 
     const homeScore = apiMatch.homeScore
