@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const navItems = [
-  { href: '/how-it-works', label: 'Guia', icon: '📚' },
   { href: '/predictions', label: 'Palpites', icon: '⚽' },
   { href: '/ranking', label: 'Ranking', icon: '🏆' },
   { href: '/history', label: 'Histórico', icon: '📋' },
+  { href: '/settings', label: 'Config.', icon: '🔔' },
 ]
 
 export default function BottomNav({ isAdmin }: { isAdmin: boolean }) {

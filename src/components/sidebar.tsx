@@ -10,6 +10,7 @@ const navItems = [
   { href: '/predictions', label: 'Palpites', icon: '⚽' },
   { href: '/ranking', label: 'Ranking', icon: '🏆' },
   { href: '/history', label: 'Histórico', icon: '📋' },
+  { href: '/settings', label: 'Configurações', icon: '🔔' },
 ]
 
 const adminItems = [

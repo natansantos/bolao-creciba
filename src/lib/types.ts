@@ -3,6 +3,9 @@ export interface Profile {
   name: string
   is_admin: boolean
   created_at: string
+  notify_deadline: boolean
+  notify_result: boolean
+  notify_round_summary: boolean
 }
 
 export interface InviteLink {
